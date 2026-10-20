@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+import {fitFixture} from '../test/fixture';
+test('imports FIT, shows analysis, persists across reload and filters without a backend',async({page})=>{
+  const errors:string[]=[];const apiRequests:string[]=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('request',r=>{if(r.url().includes('/api/'))apiRequests.push(r.url())});
+  await page.goto('./');
+  await expect(page.getByRole('heading',{name:'Chaque effort compte.'})).toBeVisible();
+  await page.locator('input[type=file]').setInputFiles({name:'run.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
+  await expect(page.getByRole('status')).toContainText('run.fit : importé');
+  await page.getByRole('button',{name:'Course à pied'}).click();
+  await expect(page.getByRole('heading',{name:'Course à pied · Analyse'})).toBeVisible();
+  await expect(page.locator('.leaflet-overlay-pane path')).toHaveCount(1);
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Course à pied'})).toBeVisible();
+  await page.locator('input[type=file]').setInputFiles({name:'copy.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
+  await expect(page.getByRole('status')).toContainText('déjà présent');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await page.getByLabel('Discipline').selectOption('cycling');
+  await expect(page.locator('tbody tr')).toHaveCount(0);
+  await page.getByLabel('Discipline').selectOption('');
+  await page.getByLabel('Date de début').fill('2026-10-02');
+  await expect(page.locator('tbody tr')).toHaveCount(0);
+  expect(errors).toEqual([]);expect(apiRequests).toEqual([]);
+});
+test('reports invalid FIT files',async({page})=>{
+  await page.goto('./');
+  await page.locator('input[type=file]').setInputFiles({name:'broken.fit',mimeType:'application/octet-stream',buffer:Buffer.from('bad fit')});
+  await expect(page.getByRole('status')).toContainText('invalide');
+  await expect(page.locator('tbody tr')).toHaveCount(0);
+});
