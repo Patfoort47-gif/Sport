@@ -1,13 +1,13 @@
 import {test,expect} from '@playwright/test';
 import {fitFixture} from '../test/fixture';
 import {visualNetwork} from './network';
-test.beforeEach(async({page})=>visualNetwork(page));
+test.beforeEach(async({page})=>{await visualNetwork(page);await page.addInitScript(()=>sessionStorage.setItem('sport-local-mode','true'))});
 test('imports FIT, shows analysis, persists across reload and filters without a backend',async({page})=>{
   const errors:string[]=[];const apiRequests:string[]=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('request',r=>{if(r.url().includes('/api/'))apiRequests.push(r.url())});
   await page.goto('./');
-  await expect(page.getByRole('heading',{name:'Chaque effort compte.'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Votre entraînement, en perspective.'})).toBeVisible();
   await page.locator('input[type=file]').setInputFiles({name:'run.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
   await expect(page.getByRole('status')).toContainText('run.fit : importé');
   await page.getByRole('button',{name:'Course à pied'}).click();
@@ -24,13 +24,14 @@ test('imports FIT, shows analysis, persists across reload and filters without a 
   await page.getByRole('button',{name:'Réinitialiser le zoom'}).click();
   await expect(page.getByTestId('analysis-range')).toHaveText('0:00 — 0:09');
   await page.reload();
+  await page.getByRole('navigation').getByRole('button',{name:'Mes activités'}).click();
   await expect(page.getByRole('button',{name:'Course à pied'})).toBeVisible();
   await page.locator('input[type=file]').setInputFiles({name:'copy.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
   await expect(page.getByRole('status')).toContainText('déjà présent');
   await expect(page.locator('tbody tr')).toHaveCount(1);
-  await page.getByLabel('Discipline').selectOption('cycling');
+  await page.getByLabel('Discipline',{exact:true}).selectOption('cycling');
   await expect(page.locator('tbody tr')).toHaveCount(0);
-  await page.getByLabel('Discipline').selectOption('');
+  await page.getByLabel('Discipline',{exact:true}).selectOption('');
   await page.getByLabel('Date de début').fill('2026-10-02');
   await expect(page.locator('tbody tr')).toHaveCount(0);
   expect(errors).toEqual([]);expect(apiRequests).toEqual([]);
@@ -59,6 +60,7 @@ test('accepts batches by drag and drop even when the journal already has activit
   await page.goto('./');
   await page.locator('input[type=file]').setInputFiles({name:'run.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
   await expect(page.getByRole('status')).toContainText('run.fit : importé');
+  await page.getByRole('navigation').getByRole('button',{name:'Importer un FIT'}).click();
   const bytes=Array.from(fitFixture(['cycling']));
   const transfer=await page.evaluateHandle(({bytes})=>{
     const dt=new DataTransfer();
@@ -76,7 +78,7 @@ test('accepts batches by drag and drop even when the journal already has activit
   await expect(page.getByTestId('chart-altitude')).toBeVisible();
   await page.screenshot({path:'test-results/dashboard-v2-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
-  await expect(page.getByTestId('fit-dropzone')).toBeVisible();
+  await expect(page.getByTestId('fit-dropzone')).toBeHidden();
   await expect(page.getByTestId('chart-heart_rate')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
   await page.screenshot({path:'test-results/dashboard-v2-mobile.png',fullPage:true});
@@ -96,10 +98,13 @@ test('navigates between statistics, journal and import with shared sport filters
   await nav.getByRole('button',{name:'Statistiques générales'}).click();
   await expect(page.getByRole('heading',{name:'Statistiques générales'})).toBeVisible();
   await expect(page.getByRole('img',{name:'Heures par mois',exact:true})).toBeVisible();
-  await expect(page.getByText('3 séance(s).',{exact:false})).toBeVisible();
+  await expect(page.getByText('3 séance(s) dans la sélection',{exact:true})).toBeVisible();
   await page.screenshot({path:'test-results/statistics-mobile.png',fullPage:true});
-  await page.getByLabel('Discipline').selectOption('other');
-  await expect(page.getByText('1 séance(s).',{exact:false})).toBeVisible();
+  await page.setViewportSize({width:1440,height:1000});
+  await page.screenshot({path:'test-results/statistics-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await page.getByLabel('Discipline',{exact:true}).selectOption('other');
+  await expect(page.getByText('1 séance(s) dans la sélection',{exact:true})).toBeVisible();
   await page.getByLabel('Date de début').fill('2027-01-01');
   await expect(page.getByText('Aucune activité pour ces filtres.',{exact:false})).toBeVisible();
   await page.getByLabel('Date de début').fill('');

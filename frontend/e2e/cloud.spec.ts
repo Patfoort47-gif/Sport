@@ -64,13 +64,15 @@ test('two devices see the same account activities; logout restores isolated loca
     await page.getByLabel('E-mail',{exact:true}).fill('sport@example.test');
     await page.getByLabel('Mot de passe',{exact:true}).fill('test-password');
     await page.getByRole('button',{name:'Se connecter',exact:true}).click();
-    await expect(page.getByText('Connecté :')).toBeVisible();return page;
+    await expect(page.getByRole('heading',{name:'Statistiques générales',exact:true})).toBeVisible();
+    await expect(page.getByRole('region',{name:'Compte et synchronisation'})).toBeHidden();return page;
   }
   try{
     const page=await login(pc);
     await page.locator('input[type=file]').setInputFiles({name:'run.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
     await expect(page.getByRole('status')).toContainText('importé');
     expect(rows).toHaveLength(1);expect(rows[0].owner_id).toBe(owner);
+    await page.getByRole('navigation').getByRole('button',{name:'Compte et Garmin'}).click();
     await page.getByLabel('E-mail Garmin',{exact:true}).fill('athlete@example.test');
     await page.getByLabel('Mot de passe Garmin',{exact:true}).fill('garmin-test-password');
     await page.getByRole('button',{name:'Connecter Garmin',exact:true}).click();
@@ -83,9 +85,11 @@ test('two devices see the same account activities; logout restores isolated loca
     await page.getByRole('button',{name:'Récupérer mon historique',exact:true}).click();
     await expect(page.getByText('Historique terminé : 23 nouvelles activités depuis 2018-01-01.')).toBeVisible();
     const mobile=await login(phone);
+    await mobile.getByRole('navigation').getByRole('button',{name:'Mes activités'}).click();
     await expect(mobile.getByRole('button',{name:'Course à pied',exact:true})).toBeVisible();
     await mobile.getByRole('button',{name:'Course à pied',exact:true}).click();
     await expect(mobile.getByRole('heading',{name:'Course à pied · Analyse'})).toBeVisible();
+    await mobile.getByRole('navigation').getByRole('button',{name:'Compte et Garmin'}).click();
     await mobile.getByRole('button',{name:'Se déconnecter'}).click();
     await expect(mobile.getByRole('button',{name:'Se connecter',exact:true})).toBeVisible();
     await expect(mobile.getByRole('button',{name:'Course à pied',exact:true})).toHaveCount(0);

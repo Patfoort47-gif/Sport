@@ -78,3 +78,11 @@ Restent à développer : emballage desktop, calendrier, tags, découpage manuel,
 Le menu **Statistiques générales** affiche les heures, kilomètres et séances par mois ainsi que la répartition du temps par sport. Les filtres de discipline (dont **Autres activités**) et de dates s’appliquent au journal, aux totaux et à ces graphiques. La navigation reste disponible sur téléphone.
 
 Dans **Connexion Garmin**, **Récupérer mon historique** importe automatiquement les lots jusqu’à la date choisie (2018 par défaut). Gardez l’onglet ouvert ; après une interruption, relancez sans doublons. Le service Render doit être mis à jour avec la nouvelle route `/garmin/history`. Voir [le guide Garmin](docs/garmin-web.md#récupérer-lhistorique-depuis-2018).
+
+### Accueil et analyse de l’entraînement
+
+L’application s’ouvre sur un écran de connexion dédié. Après connexion, la première page est **Statistiques générales** ; les réglages du compte et la synchronisation Garmin sont regroupés dans **Compte et Garmin**. Un accès local explicite reste disponible pour consulter des fichiers sans compte. La déconnexion ramène à l’accueil.
+
+Le tableau de bord présente le volume hebdomadaire sur 12 semaines, un calendrier des jours entraînés, la répartition du temps par discipline et les tendances mensuelles. La fenêtre de 12 semaines est ancrée sur la dernière activité de la sélection ; les jours et semaines sans activité enregistrée valent zéro. La comparaison de volume porte sur les quatre dernières semaines calendaires affichées et les quatre précédentes : la dernière semaine peut être incomplète, et aucun pourcentage n’est calculé si la période de référence est vide. Ces données décrivent le volume enregistré, pas la charge physiologique ou la condition physique.
+
+Les filtres par sport et dates, ainsi que les raccourcis 30 jours / 90 jours / 1 an, s’appliquent aux totaux et aux graphiques. **Mes activités** conserve le journal et l’analyse détaillée (GPS, courbes, tours).
