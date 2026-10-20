@@ -1,27 +1,33 @@
-import {Decoder, Stream} from '@garmin/fitsdk';
+import FitParser, {type ParsedFit} from 'fit-file-parser';
 import type {Detail, Sample} from './activities';
 
-// Keep the UI's existing field names while using Garmin's camelCase SDK.
 function normalize(message: Sample): Sample {
   const result: Sample = {};
-  for (const [name, value] of Object.entries(message)) {
-    const key = name.replace(/[A-Z]/g, letter => '_' + letter.toLowerCase());
+  for (const [key, value] of Object.entries(message)) {
+    if (value == null || (typeof value === 'number' && !Number.isFinite(value))) continue;
     result[key] = value instanceof Date ? value.toISOString() : value;
   }
-  for (const key of ['position_lat', 'position_long']) {
-    if (typeof result[key] === 'number') result[key] *= 180 / 2 ** 31;
-  }
+  // fit-file-parser already returns coordinates in degrees and uses the units
+  // chosen below. Enhanced values take precedence on newer Garmin devices.
   if (result.enhanced_speed != null) result.speed = result.enhanced_speed;
   if (result.enhanced_altitude != null) result.altitude = result.enhanced_altitude;
   return result;
 }
+
 export async function decodeFit(raw: ArrayBuffer): Promise<Detail> {
   if (raw.byteLength > 32 * 1024 * 1024) throw new Error('Limite : 32 Mo par fichier');
-  const decoder = new Decoder(Stream.fromArrayBuffer(raw));
-  if (!decoder.isFIT() || !decoder.checkIntegrity()) throw new Error('Fichier FIT invalide ou corrompu (CRC).');
-  const {messages, errors} = decoder.read();
-  if (errors.length) throw new Error('Impossible de décoder ce fichier FIT.');
-  const sessions = (messages.sessionMesgs ?? []).map(normalize);
+  let parsed: ParsedFit;
+  try {
+    // Defaults are permissive: force=false and strict=true are both necessary
+    // to reject bad checksums, incomplete records and trailing bytes.
+    parsed = await new FitParser({
+      mode: 'list', force: false, strict: true,
+      speedUnit: 'm/s', lengthUnit: 'm', temperatureUnit: 'celsius',
+    }).parseAsync(raw);
+  } catch {
+    throw new Error('Fichier FIT invalide ou corrompu (CRC).');
+  }
+  const sessions = (parsed.sessions ?? []).map(normalize);
   if (!sessions.length) throw new Error('Le fichier ne contient aucune session sportive.');
   const sports = [...new Set(sessions.map(s => String(s.sport ?? 'unknown')).filter(s => s !== 'transition'))];
   const times = sessions.map(s => s.start_time ?? s.timestamp).filter((v): v is string => typeof v === 'string').sort();
@@ -36,6 +42,6 @@ export async function decodeFit(raw: ArrayBuffer): Promise<Detail> {
     start_time: times[0], duration_seconds: sum('total_timer_time'), distance_meters: sum('total_distance'),
     total_elevation_gain: sum('total_ascent'),
     avg_heart_rate: hrSeconds ? Math.round(withHR.reduce((n,s) => n + s.avg_heart_rate * (s.total_timer_time ?? 0),0) / hrSeconds) : null,
-    sessions, records: (messages.recordMesgs ?? []).map(normalize), laps: (messages.lapMesgs ?? []).map(normalize),
+    sessions, records: (parsed.records ?? []).map(normalize), laps: (parsed.laps ?? []).map(normalize),
   };
 }

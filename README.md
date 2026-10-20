@@ -1,10 +1,10 @@
-# Triathlon local — GitHub Pages
+# Triathlon V2 — GitHub Pages
 
 Carnet Garmin consultable à l'adresse **https://patfoort47-gif.github.io/Sport/** une fois GitHub Pages activé et le workflow de déploiement réussi.
 
-L'interface React/TypeScript décode les FIT dans le navigateur. En mode local, les données restent dans IndexedDB. Après connexion, **Supabase Auth, Database et Storage** conservent vos activités et FIT pour vos différents appareils. Une récupération Garmin personnelle peut être activée via GitHub Actions.
+La V2 importe les FIT avec **fit-file-parser**, affiche les parcours avec **Leaflet + OpenStreetMap** et les courbes synchronisées avec **Chart.js**. L'interface responsive utilise **Tailwind CSS via CDN** (version figée avec contrôle d'intégrité), en complément des styles locaux. React/TypeScript est compilé en JavaScript statique. [Cahier des charges V2](docs/cahier-des-charges-v2.md). En mode local, les données restent dans IndexedDB. Après connexion, **Supabase Auth, Database et Storage** conservent vos activités et FIT pour vos différents appareils. Une récupération Garmin personnelle peut être activée via GitHub Actions.
 
-**Configuration nécessaire : [guide Supabase + Garmin](docs/supabase-garmin.md).** La clé publique du projet est intégrée ; il reste à exécuter le SQL, créer votre compte et configurer la première session Garmin. Aucun mot de passe Garmin ni clé serveur n'est inclus dans le site.
+**Pour le partage entre appareils et la récupération automatique : [guide Supabase + Garmin](docs/supabase-garmin.md).** L’import manuel V2 fonctionne sans cette configuration. La clé publique du projet est intégrée ; il reste à exécuter le SQL, créer votre compte et configurer la première session Garmin. Aucun mot de passe Garmin ni clé serveur n'est inclus dans le site.
 
 ## Activer GitHub Pages (une seule fois)
 
@@ -21,14 +21,14 @@ Le formulaire Garmin et le code MFA sont disponibles après activation du petit 
 
 ## Utiliser l'application
 
-- Cliquer sur **Importer des fichiers FIT**, ou déposer des fichiers dans la zone vide.
-- Filtrer par discipline et dates ; cliquer sur une activité pour ses graphiques, sessions, transitions, tours et tracé GPS.
+- Cliquer sur **Importer des fichiers FIT**, ou déposer un ou plusieurs fichiers dans la zone d’import, qui reste toujours disponible.
+- Filtrer par discipline et dates ; cliquer sur une activité pour ses graphiques, sessions, transitions, tours, fond OpenStreetMap et tracé GPS.
 - Se connecter au même compte sur PC et téléphone pour accéder aux activités Supabase. Les anciennes activités locales se transfèrent avec le bouton dédié après connexion.
 - En mode local, réouvrir le site dans le même navigateur et le même profil pour retrouver ses activités.
 
 **Garder une copie de ses FIT.** Effacer les données du navigateur, utiliser une navigation privée ou changer d'appareil peut faire disparaître l'accès aux activités locales. Le mode local reste propre à chaque navigateur ; le mode connecté partage les activités via Supabase. Les FIT ne sont jamais ajoutés au dépôt GitHub. Les anciens imports de l'API SQLite ne sont pas migrés automatiquement : réimporter leurs FIT dans cette version.
 
-La carte trace le GPS sans fond cartographique et sans requête à un fournisseur de cartes. Le chargement initial du site nécessite Internet ; aucun mode hors ligne avec service worker n'est encore implémenté.
+La carte affiche le parcours GPS sur les tuiles OpenStreetMap avec attribution et cadrage automatique. Les courbes de fréquence cardiaque, allure et altitude partagent le curseur et la plage temporelle. Les champs absents restent absents. Le fond de carte nécessite Internet ; les requêtes de tuiles indiquent à OpenStreetMap la zone consultée, sans envoyer les fichiers FIT. Le chargement initial du site nécessite Internet ; aucun mode hors ligne avec service worker n'est encore implémenté.
 
 ## Développement
 
@@ -69,6 +69,6 @@ Sous Windows : `.venv\Scripts\python.exe`. Le stockage de l'API est dans `~/.tri
 
 ## Périmètre actuel
 
-Import multiple, limite de 32 Mo par fichier, contrôle CRC, dédoublonnage SHA-256, liste et filtres, totaux, sessions multisports, graphiques synchronisés avec zoom, tours et tracé GPS. Les transitions proviennent du fichier ; aucune T1/T2 n'est inventée. La fréquence cardiaque globale est pondérée par la durée des sessions qui la contiennent. Les temps sont ceux du chronomètre FIT, pas nécessairement ceux de déplacement.
+Import multiple, limite de 32 Mo par fichier, contrôle CRC, dédoublonnage SHA-256, liste et filtres, totaux, sessions multisports, graphiques synchronisés avec zoom, tours, fond OpenStreetMap et tracé GPS. Les transitions proviennent du fichier ; aucune T1/T2 n'est inventée. La fréquence cardiaque globale est pondérée par la durée des sessions qui la contiennent. Les temps sont ceux du chronomètre FIT, pas nécessairement ceux de déplacement.
 
 Restent à développer : emballage desktop, calendrier, tags, découpage manuel, surveillance de dossier, records, tendances de forme/VO2max, agrégations semaine/mois/année et parcours coloré selon les mesures. Le seuil de chargement de 0,5 seconde avec 10 000 points n'est pas garanti.

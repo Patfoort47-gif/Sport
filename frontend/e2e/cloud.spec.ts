@@ -1,5 +1,6 @@
 import {test,expect,type BrowserContext} from '@playwright/test';
 import {fitFixture} from '../test/fixture';
+import {visualNetwork} from './network';
 
 test('two devices see the same account activities; logout restores isolated local mode',async({browser})=>{
   const owner='11111111-1111-4111-8111-111111111111';
@@ -9,6 +10,7 @@ test('two devices see the same account activities; logout restores isolated loca
   const jwtPart=(value:object)=>Buffer.from(JSON.stringify(value)).toString('base64url');
   const access_token=`${jwtPart({alg:'HS256',typ:'JWT'})}.${jwtPart({sub:owner,exp:Math.floor(Date.now()/1000)+3600,role:'authenticated',aud:'authenticated'})}.signature`;
   async function setup(context:BrowserContext){
+    await visualNetwork(context);
     await context.addInitScript(()=>localStorage.setItem('sport-supabase-public-key','sb_publishable_example_public_browser_key'));
     await context.route('**/Sport/garmin-service.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({url:'https://garmin.example.test'})}));
     await context.route('https://garmin.example.test/**',async route=>{
