@@ -1,9 +1,11 @@
 import {useEffect, useRef, useState, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import './style.css';
+import './Coach.css';
 import {Overview, sportGroup} from './Overview';
 import {Account} from './Account';
 import {ActivityAnalysis} from './ActivityAnalysis';
+import {Coach} from './Coach';
 import {listActivities, getActivity, importFiles, type Activity, type Detail} from './activities';
 
 const names: Record<string,string> = {
@@ -79,14 +81,14 @@ function App({cloud = false,revision,account}: {cloud?: boolean;revision:number;
   return <div className="layout">
     <aside>
       <div className="brand">◈ TRIATHLON<span>CARNET SPORTIF</span></div>
-      <nav aria-label="Navigation principale">{[['overview','Statistiques générales'],['activities','Mes activités'],['import','Importer un FIT'],['account','Compte et Garmin']].map(([key,label])=><button key={key} aria-current={page===key?'page':undefined} onClick={()=>navigate(key)}>{label}</button>)}</nav>
+      <nav aria-label="Navigation principale">{[['overview','Statistiques générales'],['coach','Mon coach'],['activities','Mes activités'],['import','Importer un FIT'],['account','Compte et Garmin']].map(([key,label])=><button key={key} aria-current={page===key?'page':undefined} onClick={()=>navigate(key)}>{label}</button>)}</nav>
       <p>Comprendre l’effort.<br/>Relier les disciplines.<br/>Préparer la suite.</p>
       <small>{cloud ? '● Stockage Supabase privé' : '● Stockage dans ce navigateur'}</small>
     </aside>
     <main>
       <header className="flex flex-wrap items-center justify-between gap-6">
-        <div><span className="eyebrow">ENTRAÎNEMENT / TABLEAU DE BORD</span><h1>{page==='overview'?'Votre entraînement, en perspective.':page==='activities'?'Chaque effort compte.':page==='import'?'Ajoutez votre prochaine séance.':'Votre compte et Garmin.'}</h1><p>{page==='overview'?'Du volume à la régularité : voyez ce qui compose votre entraînement.':'Natation, vélo, course à pied. Retrouvez votre progression.'}</p></div>
-        <button hidden={page==='overview'||page==='account'} className="button transition-colors hover:bg-teal-800" disabled={busy} onClick={()=>{setPage('import');input.current?.click()}}>+ Importer des fichiers FIT</button>
+        <div><span className="eyebrow">ENTRAÎNEMENT / TABLEAU DE BORD</span><h1>{page==='overview'?'Votre entraînement, en perspective.':page==='coach'?'Transformez vos données en élan.':page==='activities'?'Chaque effort compte.':page==='import'?'Ajoutez votre prochaine séance.':'Votre compte et Garmin.'}</h1><p>{page==='overview'?'Du volume à la régularité : voyez ce qui compose votre entraînement.':page==='coach'?'Des séances proposées selon votre rythme récent et vos retours.':'Natation, vélo, course à pied. Retrouvez votre progression.'}</p></div>
+        <button hidden={page==='overview'||page==='coach'||page==='account'} className="button transition-colors hover:bg-teal-800" disabled={busy} onClick={()=>{setPage('import');input.current?.click()}}>+ Importer des fichiers FIT</button>
       </header>
       <p hidden={page!=='import'} className="storage-note">{cloud ? 'Vos activités sont enregistrées dans votre compte Supabase et accessibles sur vos appareils après connexion.' : 'Mode local : importez vos fichiers directement, sans compte. Pour les retrouver sur vos autres appareils, connectez-vous à votre compte ci-dessus.'}</p>
       <section hidden={page!=='import'} id="importer" aria-label="Importer des activités" aria-busy={busy} data-testid="fit-dropzone"
@@ -102,8 +104,9 @@ function App({cloud = false,revision,account}: {cloud?: boolean;revision:number;
           onChange={event=>{upload(event.target.files);event.target.value=''}}/>
       </section>
       <div hidden={page!=='account'} className="settings-page">{account}</div>
+      <div hidden={page!=='coach'}><Coach items={items}/></div>
       {message && (page==='activities'||page==='import') && <p role="status" className="notice">{message}</p>}
-      <div hidden={page==='account'||page==='import'}>
+      <div hidden={page==='account'||page==='import'||page==='coach'}>
       <section aria-label="Filtres des activités">
         {invalidDates && <p className="notice" role="alert">La date de début doit précéder la date de fin.</p>}
           <div className="filters">

@@ -112,7 +112,7 @@ def test_history_pages_since_2018_with_durable_deduplication(monkeypatch):
     cloud = cloud_for()
     cloud.imported.side_effect = lambda identity: identity == '0'
     result = synchronize_history_batch(api, cloud, date(2018, 1, 1))
-    assert result == {'done': False, 'next_offset': 20, 'imported': 19}
+    assert result == {'done': False, 'next_offset': 20, 'imported': 19, 'scanned': 20, 'oldest_date': '2018-01-01'}
     api.get_activities.assert_called_once_with(0, 20)
     api.get_activities.return_value = [{'activityId': 21, 'startTimeGMT': '2017-12-31 10:00:00'}]
     result = synchronize_history_batch(api, cloud, date(2018, 1, 1), 20)

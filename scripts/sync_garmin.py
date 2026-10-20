@@ -173,12 +173,14 @@ def synchronize_history_batch(api, cloud, since, offset=0):
     if not isinstance(batch, list):
         raise ValueError('Liste Garmin inattendue')
     imported = 0
+    oldest_date = None
     done = len(batch) < 20
     for activity in batch:
         stamp = activity.get('startTimeLocal') or activity.get('startTimeGMT')
         if not isinstance(stamp, str):
             raise ValueError('Date Garmin absente')
         activity_date = datetime.strptime(stamp[:10], '%Y-%m-%d').date()
+        oldest_date = activity_date if oldest_date is None else min(oldest_date, activity_date)
         if activity_date < since:
             done = True
             break
@@ -194,7 +196,13 @@ def synchronize_history_batch(api, cloud, since, offset=0):
         imported += 1
         time.sleep(1)
     cloud.status(f'Historique depuis {since} : {offset + len(batch)} entrées parcourues. ' + ('Import terminé.' if done else 'Import en cours…'), success=done)
-    return {'imported': imported, 'next_offset': offset + len(batch), 'done': done}
+    return {
+        'imported': imported,
+        'scanned': len(batch),
+        'next_offset': offset + len(batch),
+        'done': done,
+        'oldest_date': oldest_date.isoformat() if oldest_date else None,
+    }
 
 
 if __name__ == '__main__':
