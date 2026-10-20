@@ -72,3 +72,9 @@ Sous Windows : `.venv\Scripts\python.exe`. Le stockage de l'API est dans `~/.tri
 Import multiple, limite de 32 Mo par fichier, contrôle CRC, dédoublonnage SHA-256, liste et filtres, totaux, sessions multisports, graphiques synchronisés avec zoom, tours, fond OpenStreetMap et tracé GPS. Les transitions proviennent du fichier ; aucune T1/T2 n'est inventée. La fréquence cardiaque globale est pondérée par la durée des sessions qui la contiennent. Les temps sont ceux du chronomètre FIT, pas nécessairement ceux de déplacement.
 
 Restent à développer : emballage desktop, calendrier, tags, découpage manuel, surveillance de dossier, records, tendances de forme/VO2max, agrégations semaine/mois/année et parcours coloré selon les mesures. Le seuil de chargement de 0,5 seconde avec 10 000 points n'est pas garanti.
+
+### Statistiques et historique complet
+
+Le menu **Statistiques générales** affiche les heures, kilomètres et séances par mois ainsi que la répartition du temps par sport. Les filtres de discipline (dont **Autres activités**) et de dates s’appliquent au journal, aux totaux et à ces graphiques. La navigation reste disponible sur téléphone.
+
+Dans **Connexion Garmin**, **Récupérer mon historique** importe automatiquement les lots jusqu’à la date choisie (2018 par défaut). Gardez l’onglet ouvert ; après une interruption, relancez sans doublons. Le service Render doit être mis à jour avec la nouvelle route `/garmin/history`. Voir [le guide Garmin](docs/garmin-web.md#récupérer-lhistorique-depuis-2018).

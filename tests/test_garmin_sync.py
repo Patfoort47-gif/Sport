@@ -102,3 +102,34 @@ def test_invalid_owner_or_url_rejected_before_network():
         Cloud('http://untrusted.test', 'secret', OWNER)
     with pytest.raises(ValueError):
         Cloud('https://example.supabase.co', 'secret', '../other-user')
+
+
+def test_history_pages_since_2018_with_durable_deduplication(monkeypatch):
+    from datetime import date
+    from scripts.sync_garmin import synchronize_history_batch
+    monkeypatch.setattr('scripts.sync_garmin.time.sleep', lambda _: None)
+    api = api_for([{'activityId': i, 'startTimeLocal': '2018-01-01 10:00:00'} for i in range(20)])
+    cloud = cloud_for()
+    cloud.imported.side_effect = lambda identity: identity == '0'
+    result = synchronize_history_batch(api, cloud, date(2018, 1, 1))
+    assert result == {'done': False, 'next_offset': 20, 'imported': 19}
+    api.get_activities.assert_called_once_with(0, 20)
+    api.get_activities.return_value = [{'activityId': 21, 'startTimeGMT': '2017-12-31 10:00:00'}]
+    result = synchronize_history_batch(api, cloud, date(2018, 1, 1), 20)
+    assert result['done'] is True
+    assert result['imported'] == 0
+    assert api.download_activity.call_count == 19
+
+
+def test_history_failure_preserves_retry_and_rejects_undated_activity(monkeypatch):
+    from datetime import date
+    from scripts.sync_garmin import synchronize_history_batch
+    api = api_for([{'activityId': 42, 'startTimeLocal': '2019-06-01'}])
+    cloud = cloud_for()
+    cloud.upload.side_effect = RuntimeError('storage quota')
+    with pytest.raises(RuntimeError):
+        synchronize_history_batch(api, cloud, date(2018, 1, 1))
+    cloud.mark_imported.assert_not_called()
+    api.get_activities.return_value = [{'activityId': 42}]
+    with pytest.raises(ValueError):
+        synchronize_history_batch(api, cloud, date(2018, 1, 1))

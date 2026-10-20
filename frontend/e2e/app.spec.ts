@@ -82,3 +82,31 @@ test('accepts batches by drag and drop even when the journal already has activit
   await page.screenshot({path:'test-results/dashboard-v2-mobile.png',fullPage:true});
   expect(errors).toEqual([]);
 });
+
+test('navigates between statistics, journal and import with shared sport filters on mobile',async({page})=>{
+  await page.goto('./');
+  await page.locator('input[type=file]').setInputFiles([
+    {name:'run.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())},
+    {name:'bike.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture(['cycling']))},
+    {name:'walk.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture(['walking']))},
+  ]);
+  await expect(page.locator('#journal tbody tr')).toHaveCount(3);
+  await page.setViewportSize({width:390,height:844});
+  const nav=page.getByRole('navigation',{name:'Navigation principale'});
+  await nav.getByRole('button',{name:'Statistiques générales'}).click();
+  await expect(page.getByRole('heading',{name:'Statistiques générales'})).toBeVisible();
+  await expect(page.getByRole('img',{name:'Heures par mois',exact:true})).toBeVisible();
+  await expect(page.getByText('3 séance(s).',{exact:false})).toBeVisible();
+  await page.screenshot({path:'test-results/statistics-mobile.png',fullPage:true});
+  await page.getByLabel('Discipline').selectOption('other');
+  await expect(page.getByText('1 séance(s).',{exact:false})).toBeVisible();
+  await page.getByLabel('Date de début').fill('2027-01-01');
+  await expect(page.getByText('Aucune activité pour ces filtres.',{exact:false})).toBeVisible();
+  await page.getByLabel('Date de début').fill('');
+  await nav.getByRole('button',{name:'Mes activités'}).click();
+  await expect(page.locator('#journal')).toBeVisible();
+  await expect(page.locator('#journal tbody tr')).toHaveCount(1);
+  await nav.getByRole('button',{name:'Importer un FIT'}).click();
+  await expect(page.getByTestId('fit-dropzone')).toBeVisible();
+  await expect(page.locator('#journal')).toBeHidden();
+});

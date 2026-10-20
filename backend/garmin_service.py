@@ -1,6 +1,7 @@
 """Authenticated, single-owner Garmin login service for the GitHub Pages app."""
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from datetime import date
 import logging
 import os
 from threading import Lock
@@ -15,7 +16,7 @@ from fastapi.responses import JSONResponse
 from garminconnect import Garmin
 from pydantic import BaseModel, Field, SecretStr
 
-from scripts.sync_garmin import Cloud, synchronize
+from scripts.sync_garmin import Cloud, synchronize, synchronize_history_batch
 
 # Do not emit authentication-library exceptions or request bodies into host logs.
 logging.getLogger('garminconnect').addHandler(logging.NullHandler())
@@ -257,3 +258,42 @@ def sync(background: BackgroundTasks, owner=Depends(require_user)):
         except Exception: pass
         cloud.http.close()
         raise HTTPException(502,'Synchronisation indisponible.') from None
+
+
+class HistoryRequest(BaseModel):
+    since: date = date(2018, 1, 1)
+    offset: int = Field(default=0, ge=0, le=1000000)
+
+
+@app.post('/garmin/history')
+def history(request: HistoryRequest, owner=Depends(require_user)):
+    if request.since < date(1990, 1, 1) or request.since > date.today():
+        raise HTTPException(422, 'Choisissez une date de début passée, à partir de 1990.')
+    cloud = cloud_for(owner)
+    lease = str(uuid4())
+    acquired = False
+    api = None
+    try:
+        acquired = cloud.acquire(lease)
+        if not acquired:
+            raise HTTPException(409, 'Une opération Garmin est déjà en cours. Réessayez après sa fin.')
+        session = cloud.load_session()
+        if not session:
+            raise HTTPException(409, 'Connectez Garmin avant de récupérer votre historique.')
+        api = Garmin()
+        api.login(session)
+        return synchronize_history_batch(api, cloud, request.since, request.offset)
+    except HTTPException:
+        raise
+    except Exception:
+        try: cloud.status('Import historique interrompu. Relancez-le pour reprendre sans doublons ; reconnectez Garmin si nécessaire.')
+        except Exception: pass
+        raise HTTPException(502, 'Import interrompu. Relancez la récupération : les activités déjà enregistrées seront conservées.') from None
+    finally:
+        if api:
+            try: cloud.save_session(api.client.dumps())
+            except Exception: pass
+        if acquired:
+            try: cloud.release(lease)
+            except Exception: pass
+        cloud.http.close()

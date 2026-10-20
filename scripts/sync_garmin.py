@@ -163,5 +163,39 @@ def main():
             cloud.http.close()
 
 
+def synchronize_history_batch(api, cloud, since, offset=0):
+    """One bounded page; the browser requests subsequent pages automatically.
+
+    Imported Garmin IDs are durable, so restarting after a disconnect is safe.
+    The Garmin activities endpoint returns newest activities first.
+    """
+    batch = api.get_activities(offset, 20)
+    if not isinstance(batch, list):
+        raise ValueError('Liste Garmin inattendue')
+    imported = 0
+    done = len(batch) < 20
+    for activity in batch:
+        stamp = activity.get('startTimeLocal') or activity.get('startTimeGMT')
+        if not isinstance(stamp, str):
+            raise ValueError('Date Garmin absente')
+        activity_date = datetime.strptime(stamp[:10], '%Y-%m-%d').date()
+        if activity_date < since:
+            done = True
+            break
+        identity = str(activity['activityId'])
+        if not identity.isdigit():
+            raise ValueError('Identifiant Garmin invalide')
+        if cloud.imported(identity):
+            continue
+        payload = api.download_activity(identity, dl_fmt=Garmin.ActivityDownloadFormat.ORIGINAL)
+        for raw in fit_files(payload):
+            cloud.upload(raw, activity.get('activityName'))
+        cloud.mark_imported(identity)
+        imported += 1
+        time.sleep(1)
+    cloud.status(f'Historique depuis {since} : {offset + len(batch)} entrées parcourues. ' + ('Import terminé.' if done else 'Import en cours…'), success=done)
+    return {'imported': imported, 'next_offset': offset + len(batch), 'done': done}
+
+
 if __name__ == '__main__':
     raise SystemExit(main())

@@ -26,6 +26,7 @@ test('two devices see the same account activities; logout restores isolated loca
         expect(request.postDataJSON()).toEqual({challenge_id:'a'.repeat(32),code:'123456'});
         garminConnected=true;body={status:'connected'};
       }else if(path==='/garmin/sync')body={status:'scheduled'};
+      else if(path==='/garmin/history'){const {since,offset}=request.postDataJSON();expect(since).toBe('2018-01-01');body={imported:offset===0?20:3,next_offset:offset+20,done:offset===20};}
       await route.fulfill({status:path==='/garmin/sync'?202:200,contentType:'application/json',body:JSON.stringify(body)});
     });
     await context.route(base+'/**',async route=>{
@@ -79,6 +80,8 @@ test('two devices see the same account activities; logout restores isolated loca
     expect(await page.evaluate(()=>JSON.stringify(localStorage))).not.toContain('garmin-test-password');
     await page.getByRole('button',{name:'Synchroniser maintenant'}).click();
     await expect(page.getByText('Synchronisation lancée pour les 20 activités les plus récentes.',{exact:false})).toBeVisible();
+    await page.getByRole('button',{name:'Récupérer mon historique',exact:true}).click();
+    await expect(page.getByText('Historique terminé : 23 nouvelles activités depuis 2018-01-01.')).toBeVisible();
     const mobile=await login(phone);
     await expect(mobile.getByRole('button',{name:'Course à pied',exact:true})).toBeVisible();
     await mobile.getByRole('button',{name:'Course à pied',exact:true}).click();

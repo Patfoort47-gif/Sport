@@ -59,3 +59,11 @@ Conserver le workflow **Synchroniser Garmin** existant pour la récupération to
 **Le secret `GARMIN_SESSION` n'est plus nécessaire** : la connexion du formulaire enregistre directement la session dans Supabase. L'ancienne méthode reste compatible si vous l'utilisiez déjà ; ne cocher la réinitialisation depuis un ancien secret que si vous souhaitez explicitement le restaurer.
 
 La bibliothèque Garmin est non officielle : une évolution de Garmin ou une restriction de connexion depuis l'hébergeur peut nécessiter une correction. Une session expirée se renouvelle via le même formulaire. Les tests du dépôt simulent Garmin et Supabase ; le déploiement du service et une connexion réelle restent nécessaires pour vérifier votre compte.
+
+### Récupérer l’historique depuis 2018
+
+Après connexion, choisissez **Historique depuis** (par défaut le 1er janvier 2018), puis **Récupérer mon historique**. Gardez l’onglet ouvert : l’application demande automatiquement des lots de 20 jusqu’à la date choisie ou la fin des activités Garmin. Le statut indique la progression. Les séances sont stockées dans Supabase ; les statistiques les utilisent au rafraîchissement de l’historique (chaque minute, puis à la fin de l’import).
+
+Le bouton **Arrêter après ce lot** laisse terminer les écritures en cours. Après une interruption ou une erreur Garmin, relancez l’import : il repart de la liste récente mais ignore les identifiants déjà enregistrés, sans retélécharger leurs fichiers. Garmin doit encore proposer l’export FIT des activités concernées. Une activité non exportable interrompt l’import avec un message plutôt que d’annoncer un historique complet.
+
+**Mise à jour du serveur nécessaire :** dans Render, déployez le dernier commit de `main` (ou laissez le déploiement automatique le faire). La nouvelle route `/garmin/history` fait partie du service Python, pas de GitHub Pages. Aucun nouveau secret ni migration SQL n’est nécessaire. Une erreur « Not Found » sur l’import historique signifie que ce service n’a pas encore été mis à jour. Une récupération de plusieurs années peut prendre longtemps et consommer le quota de stockage Supabase disponible.

@@ -128,3 +128,37 @@ def test_health_and_cors():
     assert response.headers['access-control-allow-origin']==service.ORIGIN
     denied=client.options('/garmin/connect',headers={'Origin':'https://evil.example','Access-Control-Request-Method':'POST'})
     assert 'access-control-allow-origin' not in denied.headers
+
+
+def test_history_authenticated_batch_and_lease_release(setup, monkeypatch):
+    from datetime import date
+    client, api, cloud = setup
+    cloud.load_session.return_value = 'private-session'
+    batch = Mock(return_value={'done': False, 'next_offset': 40, 'imported': 20})
+    monkeypatch.setattr(service, 'synchronize_history_batch', batch)
+    response = client.post('/garmin/history', json={'since': '2018-01-01', 'offset': 20})
+    assert response.status_code == 200
+    assert response.json()['next_offset'] == 40
+    batch.assert_called_once_with(api, cloud, date(2018, 1, 1), 20)
+    cloud.release.assert_called_once()
+    assert client.post('/garmin/history', json={'offset': -1}).status_code == 422
+    assert client.post('/garmin/history', json={'since': '2099-01-01'}).status_code == 422
+
+
+def test_history_busy_does_not_release_another_lease(setup):
+    client, api, cloud = setup
+    cloud.acquire.return_value = False
+    assert client.post('/garmin/history', json={}).status_code == 409
+    cloud.release.assert_not_called()
+    api.login.assert_not_called()
+
+
+def test_history_failure_is_sanitized_and_unlocks_for_retry(setup, monkeypatch):
+    client, api, cloud = setup
+    cloud.load_session.return_value = 'private-session'
+    monkeypatch.setattr(service, 'synchronize_history_batch', Mock(side_effect=RuntimeError(SECRET)))
+    response = client.post('/garmin/history', json={})
+    assert response.status_code == 502
+    assert SECRET not in response.text
+    cloud.save_session.assert_called_once()
+    cloud.release.assert_called_once()
