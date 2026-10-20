@@ -2,7 +2,9 @@
 
 Carnet Garmin consultable à l'adresse **https://patfoort47-gif.github.io/Sport/** une fois GitHub Pages activé et le workflow de déploiement réussi.
 
-L'interface React/TypeScript décode les FIT dans le navigateur avec le SDK officiel Garmin. Activités, détails et fichiers FIT originaux sont conservés dans **IndexedDB**, sur l'appareil. Aucun backend, compte Garmin ou clé d'API n'est nécessaire pour cette version.
+L'interface React/TypeScript décode les FIT dans le navigateur. En mode local, les données restent dans IndexedDB. Après connexion, **Supabase Auth, Database et Storage** conservent vos activités et FIT pour vos différents appareils. Une récupération Garmin personnelle peut être activée via GitHub Actions.
+
+**Configuration nécessaire : [guide Supabase + Garmin](docs/supabase-garmin.md).** La clé publique du projet est intégrée ; il reste à exécuter le SQL, créer votre compte et configurer la première session Garmin. Aucun mot de passe Garmin ni clé serveur n'est inclus dans le site.
 
 ## Activer GitHub Pages (une seule fois)
 
@@ -11,15 +13,16 @@ L'interface React/TypeScript décode les FIT dans le navigateur avec le SDK offi
 3. Ouvrir [Actions → Test and deploy GitHub Pages](https://github.com/Patfoort47-gif/Sport/actions/workflows/pages.yml). Si le dernier déploiement a échoué avant l'activation de Pages, utiliser **Re-run all jobs**, ou **Run workflow** sur `main`.
 4. Attendre que les tâches `build` et `deploy` soient vertes, puis ouvrir https://patfoort47-gif.github.io/Sport/.
 
-Chaque push sur `main` relance automatiquement les tests unitaires, la compilation TypeScript et les tests Chromium, puis déploie seulement si tous réussissent. La configuration Vite utilise `/Sport/` pour les ressources du site.
+Chaque push sur `main` relance automatiquement les tests unitaires, les tests SQL des règles d’accès, la compilation TypeScript, les tests Python et les tests Chromium, puis déploie seulement si tous réussissent. La configuration Vite utilise `/Sport/` pour les ressources du site.
 
 ## Utiliser l'application
 
 - Cliquer sur **Importer des fichiers FIT**, ou déposer des fichiers dans la zone vide.
 - Filtrer par discipline et dates ; cliquer sur une activité pour ses graphiques, sessions, transitions, tours et tracé GPS.
-- Réouvrir le site dans le même navigateur et le même profil pour retrouver ses activités.
+- Se connecter au même compte sur PC et téléphone pour accéder aux activités Supabase. Les anciennes activités locales se transfèrent avec le bouton dédié après connexion.
+- En mode local, réouvrir le site dans le même navigateur et le même profil pour retrouver ses activités.
 
-**Garder une copie de ses FIT.** Effacer les données du navigateur, utiliser une navigation privée ou changer d'appareil peut faire disparaître l'accès aux activités locales. Les données ne sont pas synchronisées entre appareils et ne sont pas ajoutées au dépôt GitHub. Réimporter les mêmes fichiers sur un autre appareil pour les y consulter. Les anciens imports de l'API SQLite ne sont pas migrés automatiquement : réimporter leurs FIT dans cette version.
+**Garder une copie de ses FIT.** Effacer les données du navigateur, utiliser une navigation privée ou changer d'appareil peut faire disparaître l'accès aux activités locales. Le mode local reste propre à chaque navigateur ; le mode connecté partage les activités via Supabase. Les FIT ne sont jamais ajoutés au dépôt GitHub. Les anciens imports de l'API SQLite ne sont pas migrés automatiquement : réimporter leurs FIT dans cette version.
 
 La carte trace le GPS sans fond cartographique et sans requête à un fournisseur de cartes. Le chargement initial du site nécessite Internet ; aucun mode hors ligne avec service worker n'est encore implémenté.
 
@@ -45,7 +48,7 @@ npm run test:e2e
 
 Si Chromium est déjà installé, sélectionner son exécutable avec la variable `CHROMIUM_PATH` plutôt que de télécharger un second navigateur. `npm --prefix frontend run preview` sert le résultat de compilation pour les vérifications locales.
 
-Les tests couvrent le décodage de FIT course/vélo/triathlon synthétiques avec CRC, les coordonnées GPS, les mesures, la détection des doublons, les fichiers corrompus, le stockage IndexedDB et un parcours complet dans Chromium sous `/Sport/`. Une validation avec des exports Garmin réels reste nécessaire.
+Les tests couvrent le décodage FIT, le stockage IndexedDB, la synchronisation serveur simulée, les règles SQL exécutées dans PostgreSQL/PGlite et les parcours Chromium local et multiappareil (Supabase simulé) sous `/Sport/`. Une validation avec des exports Garmin réels reste nécessaire.
 
 ## Backend Python historique (facultatif)
 

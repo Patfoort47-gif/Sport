@@ -1,0 +1,37 @@
+name: Synchroniser Garmin
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      reset_session:
+        description: Utiliser une nouvelle session Garmin depuis GARMIN_SESSION
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: vars.GARMIN_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-sync.txt
+      - run: python -m pip install -r requirements-sync.txt
+      - name: Récupérer les activités et rafraîchir la session
+        run: python -m scripts.sync_garmin
+        env:
+          SUPABASE_URL: https://uelygvkvdlxrewpftyrf.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_USER_ID: ${{ vars.SUPABASE_USER_ID }}
+          GARMIN_SESSION: ${{ secrets.GARMIN_SESSION }}
+          GARMIN_MAX_ACTIVITIES: ${{ vars.GARMIN_MAX_ACTIVITIES || '200' }}
+          RESET_GARMIN_SESSION: ${{ inputs.reset_session && 'true' || 'false' }}

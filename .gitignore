@@ -6,3 +6,7 @@ dist/
 *.sqlite
 playwright-report/
 test-results/
+.env
+.env.*
+!.env.example
+*garmin*session*.json

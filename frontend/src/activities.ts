@@ -1,4 +1,5 @@
 import {openDB, type DBSchema} from 'idb';
+import {cloudContext, cloudList, cloudDetail, cloudSave} from './cloud';
 
 export type Activity = {
   id: string; title: string; sport_type: string; start_time: string;
@@ -19,13 +20,13 @@ const database = () => openDB<Library>('triathlon-local', 1, {
     db.createObjectStore('files');
   },
 });
-export async function listActivities(): Promise<Activity[]> {
+export async function listLocalActivities(): Promise<Activity[]> {
   const db = await database();
   try {
     return (await db.getAll('activities')).sort((a,b)=>b.start_time.localeCompare(a.start_time));
   } finally {db.close()}
 }
-export async function getActivity(id: string): Promise<Detail> {
+export async function getLocalActivity(id: string): Promise<Detail> {
   const db = await database();
   try {
     const activity = await db.get('details', id);
@@ -33,7 +34,7 @@ export async function getActivity(id: string): Promise<Detail> {
     return activity;
   } finally {db.close()}
 }
-export async function saveActivity(activity: Detail, raw: ArrayBuffer): Promise<boolean> {
+export async function saveLocalActivity(activity: Detail, raw: ArrayBuffer): Promise<boolean> {
   const db = await database();
   try {
     const tx = db.transaction(['activities', 'details', 'files'], 'readwrite');
@@ -46,6 +47,34 @@ export async function saveActivity(activity: Detail, raw: ArrayBuffer): Promise<
     await tx.done;
     return true;
   } finally {db.close()}
+}
+export async function listActivities(): Promise<Activity[]> {
+  const context = await cloudContext();
+  return context ? cloudList(context) : listLocalActivities();
+}
+export async function getActivity(id: string): Promise<Detail> {
+  const context = await cloudContext();
+  return context ? cloudDetail(context,id) : getLocalActivity(id);
+}
+export async function saveActivity(activity: Detail, raw: ArrayBuffer): Promise<boolean> {
+  const context = await cloudContext();
+  return context ? cloudSave(context,activity,raw) : saveLocalActivity(activity,raw);
+}
+export async function migrateLocalActivities(): Promise<number> {
+  const context = await cloudContext();
+  if (!context) throw new Error('Connectez-vous avant le transfert.');
+  const local = await listLocalActivities();
+  let count = 0;
+  const db = await database();
+  try {
+    for (const summary of local) {
+      const raw = await db.get('files',summary.id);
+      if (!raw) throw new Error('Fichier FIT local manquant ; réimportez-le.');
+      const detail = await getLocalActivity(summary.id);
+      if (await cloudSave(context,detail,raw)) count++;
+    }
+  } finally {db.close()}
+  return count;
 }
 export type ImportResult = {file: string; status?: 'imported' | 'duplicate'; error?: string};
 export async function importFiles(files: Iterable<File>): Promise<ImportResult[]> {
