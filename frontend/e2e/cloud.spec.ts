@@ -4,12 +4,28 @@ import {fitFixture} from '../test/fixture';
 test('two devices see the same account activities; logout restores isolated local mode',async({browser})=>{
   const owner='11111111-1111-4111-8111-111111111111';
   const base='https://uelygvkvdlxrewpftyrf.supabase.co';
-  const objects=new Map<string,string>();const rows:any[]=[];
+  const objects=new Map<string,string>();const rows:any[]=[];let garminConnected=false;
   const user={id:owner,aud:'authenticated',role:'authenticated',email:'sport@example.test',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-01-01T00:00:00Z'};
   const jwtPart=(value:object)=>Buffer.from(JSON.stringify(value)).toString('base64url');
   const access_token=`${jwtPart({alg:'HS256',typ:'JWT'})}.${jwtPart({sub:owner,exp:Math.floor(Date.now()/1000)+3600,role:'authenticated',aud:'authenticated'})}.signature`;
   async function setup(context:BrowserContext){
     await context.addInitScript(()=>localStorage.setItem('sport-supabase-public-key','sb_publishable_example_public_browser_key'));
+    await context.route('**/Sport/garmin-service.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({url:'https://garmin.example.test'})}));
+    await context.route('https://garmin.example.test/**',async route=>{
+      const request=route.request();
+      expect(request.headers().authorization).toBe('Bearer '+access_token);
+      const path=new URL(request.url()).pathname;
+      let body:unknown={};
+      if(path==='/garmin/status')body={connected:garminConnected};
+      else if(path==='/garmin/connect'){
+        expect(request.postDataJSON()).toEqual({email:'athlete@example.test',password:'garmin-test-password'});
+        body={status:'mfa_required',challenge_id:'a'.repeat(32)};
+      }else if(path==='/garmin/mfa'){
+        expect(request.postDataJSON()).toEqual({challenge_id:'a'.repeat(32),code:'123456'});
+        garminConnected=true;body={status:'connected'};
+      }else if(path==='/garmin/sync')body={status:'scheduled'};
+      await route.fulfill({status:path==='/garmin/sync'?202:200,contentType:'application/json',body:JSON.stringify(body)});
+    });
     await context.route(base+'/**',async route=>{
       const request=route.request(),url=new URL(request.url()),path=url.pathname;
       let body:unknown=[];
@@ -52,6 +68,15 @@ test('two devices see the same account activities; logout restores isolated loca
     await page.locator('input[type=file]').setInputFiles({name:'run.fit',mimeType:'application/octet-stream',buffer:Buffer.from(fitFixture())});
     await expect(page.getByRole('status')).toContainText('importé');
     expect(rows).toHaveLength(1);expect(rows[0].owner_id).toBe(owner);
+    await page.getByLabel('E-mail Garmin',{exact:true}).fill('athlete@example.test');
+    await page.getByLabel('Mot de passe Garmin',{exact:true}).fill('garmin-test-password');
+    await page.getByRole('button',{name:'Connecter Garmin',exact:true}).click();
+    await page.getByLabel('Code de vérification Garmin').fill('123456');
+    await page.getByRole('button',{name:'Valider le code Garmin'}).click();
+    await expect(page.getByText('Garmin connecté. Vous pouvez synchroniser vos activités.')).toBeVisible();
+    expect(await page.evaluate(()=>JSON.stringify(localStorage))).not.toContain('garmin-test-password');
+    await page.getByRole('button',{name:'Synchroniser maintenant'}).click();
+    await expect(page.getByText('Synchronisation lancée pour les 20 activités les plus récentes.',{exact:false})).toBeVisible();
     const mobile=await login(phone);
     await expect(mobile.getByRole('button',{name:'Course à pied',exact:true})).toBeVisible();
     await mobile.getByRole('button',{name:'Course à pied',exact:true}).click();

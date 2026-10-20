@@ -25,6 +25,8 @@ beforeAll(async()=>{
   const migration=readFileSync(new URL('../../supabase/migrations/202610200001_sport_cloud.sql',import.meta.url),'utf8');
   await db.exec(migration);
   await db.exec(migration); // repeatable setup
+  const leases=readFileSync(new URL('../../supabase/migrations/202610200002_garmin_leases.sql',import.meta.url),'utf8');
+  await db.exec(leases);await db.exec(leases);
   await db.exec(`
     insert into public.sport_activities(owner_id,id,start_time,summary) values
     ('${userA}','${hash}',now(),'${JSON.stringify({id:hash,title:'Private A'})}'),
@@ -71,4 +73,17 @@ it('allows only the server role to save and refresh Garmin sessions',async()=>{
   await db.query('select public.sport_save_garmin_session($1,$2)',[userA,'session-v1']);
   await db.query('select public.sport_save_garmin_session($1,$2)',[userA,'session-v2']);
   expect((await db.query<{sport_load_garmin_session:string}>('select public.sport_load_garmin_session($1)',[userA])).rows[0].sport_load_garmin_session).toBe('session-v2');
+});
+
+it('serializes server login and sync without giving browser users lease access',async()=>{
+  const first='33333333-3333-4333-8333-333333333333',second='44444444-4444-4444-8444-444444444444';
+  await asUser('authenticated',userA);
+  await expect(db.query('select public.sport_acquire_garmin_lease($1,$2,300)',[userA,first])).rejects.toThrow(/permission denied/);
+  await asUser('service_role');
+  const acquire=async(id:string)=>(await db.query<{ok:boolean}>('select public.sport_acquire_garmin_lease($1,$2,300) as ok',[userA,id])).rows[0].ok;
+  expect(await acquire(first)).toBe(true);expect(await acquire(second)).toBe(false);
+  await db.query('select public.sport_release_garmin_lease($1,$2)',[userA,second]);
+  expect(await acquire(second)).toBe(false);
+  await db.query('select public.sport_release_garmin_lease($1,$2)',[userA,first]);
+  expect(await acquire(second)).toBe(true);
 });

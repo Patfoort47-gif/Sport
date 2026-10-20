@@ -15,6 +15,10 @@ L'interface React/TypeScript décode les FIT dans le navigateur. En mode local, 
 
 Chaque push sur `main` relance automatiquement les tests unitaires, les tests SQL des règles d’accès, la compilation TypeScript, les tests Python et les tests Chromium, puis déploie seulement si tous réussissent. La configuration Vite utilise `/Sport/` pour les ressources du site.
 
+## Connecter Garmin depuis le site
+
+Le formulaire Garmin et le code MFA sont disponibles après activation du petit service HTTPS fourni dans `render.yaml`. **[Guide sans script sur vos appareils](docs/garmin-web.md)**. GitHub Pages reste l'adresse de l'application ; Render traite uniquement la connexion et la demande de synchronisation. Le déploiement externe et la migration supplémentaire sont à activer une seule fois.
+
 ## Utiliser l'application
 
 - Cliquer sur **Importer des fichiers FIT**, ou déposer des fichiers dans la zone vide.

@@ -25,6 +25,7 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
+          VITE_GARMIN_SERVICE_URL: ${{ vars.GARMIN_SERVICE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

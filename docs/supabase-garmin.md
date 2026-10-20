@@ -18,7 +18,13 @@ Les imports après connexion vont dans Supabase. La déconnexion retrouve le mod
 
 La clé publique peut être remplacée à la compilation par la variable GitHub Actions `SUPABASE_PUBLISHABLE_KEY` si vous la faites tourner ultérieurement. Ne jamais mettre une clé `service_role` ou `secret` dans le frontend, une variable `VITE_*` ou un commit.
 
-## 2. Créer la première session Garmin sur votre ordinateur
+## Connexion Garmin recommandée : directement dans l'application
+
+Suivre **[le guide de connexion depuis le site](garmin-web.md)**. Il configure un service HTTPS, puis permet de saisir les identifiants et le code MFA dans l'interface. Aucun script Python sur vos appareils ni secret `GARMIN_SESSION` à générer avec cette méthode.
+
+Les sections suivantes conservent la méthode manuelle historique comme alternative, et ne sont **pas nécessaires** si vous utilisez le formulaire du site.
+
+## 2. Alternative historique : créer une session Garmin sur votre ordinateur
 
 La solution choisie est la bibliothèque non officielle Python `garminconnect`, dans un workflow GitHub Actions personnel. Il n'y a pas de mot de passe Garmin saisi dans le site public. La première connexion se fait localement et accepte le code de double authentification si Garmin le demande.
 

@@ -8,7 +8,7 @@ import os
 import re
 import sys
 import time
-from uuid import UUID
+from uuid import UUID, uuid4
 from zipfile import ZipFile, is_zipfile
 
 import httpx
@@ -29,6 +29,12 @@ class Cloud:
         response = self.http.request(method, path, **kwargs)
         response.raise_for_status()
         return response
+
+    def acquire(self, lease, seconds=2700):
+        return self.request('POST', '/rest/v1/rpc/sport_acquire_garmin_lease', json={'p_owner_id': self.owner, 'p_lease_id': lease, 'p_seconds': seconds}).json() is True
+
+    def release(self, lease):
+        self.request('POST', '/rest/v1/rpc/sport_release_garmin_lease', json={'p_owner_id': self.owner, 'p_lease_id': lease})
 
     def load_session(self):
         return self.request('POST', '/rest/v1/rpc/sport_load_garmin_session', json={'p_owner_id': self.owner}).json()
@@ -118,8 +124,14 @@ def synchronize(api, cloud, max_activities=200, pause=time.sleep):
 def main():
     logging.disable(logging.CRITICAL)
     cloud = None
+    lease = None
     try:
         cloud = Cloud(os.environ['SUPABASE_URL'].rstrip('/'), os.environ['SUPABASE_SERVICE_ROLE_KEY'], os.environ['SUPABASE_USER_ID'])
+        candidate = str(uuid4())
+        if not cloud.acquire(candidate):
+            print('Une connexion ou synchronisation Garmin est déjà en cours ; prochaine tentative au prochain passage.')
+            return 0
+        lease = candidate
         # Use the bootstrap secret when explicitly reconnecting an expired session.
         bootstrap = os.environ.get('GARMIN_SESSION', '')
         session = bootstrap if os.environ.get('RESET_GARMIN_SESSION') == 'true' else cloud.load_session() or bootstrap
@@ -141,6 +153,14 @@ def main():
                 pass
         print('Synchronisation impossible. Vérifiez la configuration Supabase et la validité de la session Garmin ; aucun secret affiché.', file=sys.stderr)
         return 1
+    finally:
+        if cloud:
+            if lease:
+                try:
+                    cloud.release(lease)
+                except Exception:
+                    pass
+            cloud.http.close()
 
 
 if __name__ == '__main__':
